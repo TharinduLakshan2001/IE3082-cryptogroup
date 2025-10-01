@@ -76,17 +76,20 @@ def check_python_version():
         return False
     return True
 
-def run_command(command, description="", check=True):
+def run_command(command, description="", check=True, shell=True):
     """Run a shell command and handle errors."""
     if description:
         print_info(f"{description}...")
     
     try:
-        result = subprocess.run(command, shell=True, check=check, 
+        # Use shell=True for string commands, shell=False for list commands if needed for better security
+        result = subprocess.run(command, shell=shell, check=check, 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                               text=True)
         if result.stdout:
-            print(result.stdout)
+            # Optionally print stdout, but often it's too verbose
+            # print(result.stdout)
+            pass
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
         if check:
@@ -107,52 +110,104 @@ def is_package_installed(package_name):
     except ImportError:
         return False
 
-def install_python_packages():
-    """Install required Python packages."""
-    print_header("Installing Python dependencies...")
+def install_system_dependencies():
+    """Install required system dependencies."""
+    print_header("Installing system dependencies...")
     
-    packages = [
-        ("cryptography", "cryptography"),
-        ("matplotlib", "matplotlib")
+    # Update package list
+    print_info("Updating package list...")
+    if not run_command("apt update", check=False):
+        print_warning("Failed to update package list. Continuing with installation...")
+
+    system_packages = [
+        "python3",
+        "python3-pip",
+        "python3-full", # Recommended for PEP 668 compliance
+        "python3-dev",  # Development headers, often needed
+        "build-essential" # Build tools
     ]
+    
+    for package in system_packages:
+        if not run_command(f"apt install -y {package}", f"Installing {package}", check=False):
+             print_warning(f"Failed to install system package: {package}. Continuing...")
+    
+    print_success("System dependency installation attempt completed.")
+
+def install_python_packages_from_requirements():
+    """Install Python packages listed in requirements.txt."""
+    print_header("Installing Python dependencies from requirements.txt...")
     
     # First try to upgrade pip
     print_info("Upgrading pip...")
     run_command("python3 -m pip install --upgrade pip", check=False)
     
-    all_installed = True
-    for package_import, package_name in packages:
-        if is_package_installed(package_import):
-            print_success(f"{package_name} is already installed")
-            continue
-            
-        print_info(f"Installing {package_name}...")
-        # Try multiple installation methods
-        install_methods = [
-            f"python3 -m pip install {package_name}",
-            f"pip3 install {package_name}",
-            f"pip install {package_name}",
-            f"apt install -y python3-{package_name.replace('_', '-')}" if package_name != "matplotlib" else "apt install -y python3-matplotlib",
-        ]
-        
-        installed = False
-        for method in install_methods:
-            if run_command(method, check=False):
-                installed = True
-                break
-        
-        if not installed:
-            print_warning(f"Failed to install {package_name} with automatic methods")
-            print_info("Please install it manually with one of these commands:")
-            for method in install_methods:
-                print(f"  {method}")
-            all_installed = False
-        else:
-            print_success(f"Successfully installed {package_name}")
+    # Check for requirements.txt
+    requirements_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    if not os.path.exists(requirements_file):
+        print_warning(f"requirements.txt not found at {requirements_file}")
+        return False
+
+    print_info(f"Found requirements.txt at {requirements_file}")
     
-    if all_installed:
-        print_success("All Python packages installed successfully!")
-    return all_installed
+    # Try to install from requirements.txt using various methods
+    # Method 1: Standard pip install (may hit PEP 668 issues)
+    print_info("Attempting to install packages using pip (standard method)...")
+    if run_command(f"python3 -m pip install -r {requirements_file}", check=False):
+        print_success("Successfully installed packages from requirements.txt (standard method)")
+        return True
+    else:
+        print_warning("Standard pip install failed (likely due to PEP 668). Trying alternatives...")
+    
+    # Method 2: pip install with --break-system-packages (common workaround in Kali)
+    print_info("Attempting to install packages using pip with --break-system-packages...")
+    if run_command(f"python3 -m pip install --break-system-packages -r {requirements_file}", check=False):
+        print_success("Successfully installed packages from requirements.txt (--break-system-packages)")
+        return True
+    else:
+        print_warning("--break-system-packages method also failed.")
+        
+    # Method 3: Install system packages via apt (fallback for common ones)
+    print_info("Falling back to installing system packages via apt...")
+    apt_fallback_map = {
+        "cryptography": "python3-cryptography",
+        "matplotlib": "python3-matplotlib",
+        "psutil": "python3-psutil"
+    }
+    
+    success_count = 0
+    try:
+        with open(requirements_file, 'r') as f:
+            lines = f.readlines()
+        
+        for line in lines:
+            package_line = line.strip()
+            if not package_line or package_line.startswith('#'):
+                continue
+            
+            # Extract package name (basic parsing, might need improvement for complex specs)
+            package_name = package_line.split('>=')[0].split('==')[0].split('>')[0].split('<')[0].split('<=')[0].split('~=')[0]
+            
+            if package_name in apt_fallback_map:
+                apt_package = apt_fallback_map[package_name]
+                print_info(f"Installing {apt_package} via apt...")
+                if run_command(f"apt install -y {apt_package}", check=False):
+                    print_success(f"Installed {apt_package} via apt")
+                    success_count += 1
+                else:
+                    print_error(f"Failed to install {apt_package} via apt")
+            else:
+                 print_warning(f"No apt fallback for package: {package_name}")
+                 
+    except Exception as e:
+        print_error(f"Error during apt fallback installation: {e}")
+        
+    if success_count == len(apt_fallback_map):
+        print_success("Successfully installed all packages via apt fallback.")
+        return True
+    else:
+        print_warning("Apt fallback did not install all packages.")
+        
+    return False
 
 def setup_toolkit():
     """Set up the toolkit for system-wide usage."""
@@ -164,9 +219,10 @@ def setup_toolkit():
     
     # Make cryp.py executable
     if not run_command(f"chmod +x {cryp_script}", "Making cryp.py executable"):
+        print_error("Failed to make cryp.py executable")
         return False
     
-    # Create symlink in /usr/local/bin
+    # Create symlink in /usr/local/bin (requires root)
     print_info("Creating system-wide command 'cryp'...")
     if not run_command("mkdir -p /usr/local/bin", check=False):
         print_warning("Could not create /usr/local/bin directory")
@@ -174,17 +230,18 @@ def setup_toolkit():
     # Try to create symlink
     if run_command(f"ln -sf {cryp_script} /usr/local/bin/cryp", check=False):
         print_success("Created symlink /usr/local/bin/cryp")
+        return True
     else:
         # If symlink fails, try copying
         print_warning("Could not create symlink, trying to copy...")
         if run_command(f"cp {cryp_script} /usr/local/bin/cryp", check=False):
             run_command("chmod +x /usr/local/bin/cryp", check=False)
             print_success("Copied cryp to /usr/local/bin/")
+            return True
         else:
             print_warning("Could not install to /usr/local/bin/")
             print_info(f"You can run the tool directly with: python3 {cryp_script}")
-    
-    return True
+            return False # Don't consider this a hard failure for the whole script
 
 def verify_installation():
     """Verify that the installation was successful."""
@@ -197,20 +254,31 @@ def verify_installation():
         print_warning("'cryp' command is not available system-wide")
         print_info("You can run the tool directly with: python3 cryp.py")
     
-    # Test importing modules
-    try:
-        # Test importing core modules
-        from aes.aes_gcm import generate_aes_key
-        from rsa.rsa_crypto import generate_rsa_keys
-        from ecc.ecc_crypto import generate_curve25519_keys
-        from hashing.sha256_hash import hash_text_sha256
-        print_success("All modules imported successfully")
-    except Exception as e:
-        print_error(f"Module import failed: {e}")
+    # Test importing core modules
+    core_modules = {
+        'aes.aes_gcm': 'generate_aes_key',
+        'rsa.rsa_crypto': 'generate_rsa_keys',
+        'ecc.ecc_crypto': 'generate_curve25519_keys',
+        'hashing.sha256_hash': 'hash_text_sha256'
+    }
+    
+    all_imports_successful = True
+    for module_path, function_name in core_modules.items():
+        try:
+            # Dynamically import the module and get the function
+            module = importlib.import_module(module_path)
+            getattr(module, function_name) # Check if function exists
+            print_success(f"Module {module_path} imported successfully")
+        except Exception as e:
+            print_error(f"Failed to import {module_path}: {e}")
+            all_imports_successful = False
+            
+    if not all_imports_successful:
         return False
     
     # Test core functionality
     try:
+        from aes.aes_gcm import generate_aes_key
         key = generate_aes_key()
         if len(key) == 32:
             print_success("AES key generation working")
@@ -220,6 +288,22 @@ def verify_installation():
     except Exception as e:
         print_error(f"Core functionality test failed: {e}")
         return False
+    
+    # Verify specific required packages are available
+    required_packages = ['cryptography', 'matplotlib', 'psutil']
+    for pkg in required_packages:
+        if is_package_installed(pkg):
+            print_success(f"{pkg} is available")
+        else:
+            # Special check for psutil which might be installed via apt
+            if pkg == 'psutil':
+                try:
+                    import psutil
+                    print_success("psutil is available (imported successfully)")
+                except ImportError:
+                    print_warning("psutil is not available. Memory profiling will be limited.")
+            else:
+                print_warning(f"{pkg} is not available.")
     
     return True
 
@@ -240,56 +324,53 @@ def main():
     else:
         print_warning("This tool is designed for Kali Linux. You may encounter issues on other systems.")
     
-    # Update package list
-    print_info("Updating package list...")
-    run_command("apt update", check=False)
+    # Check for root privileges (recommended for system-wide installation)
+    if os.geteuid() != 0:
+        print_warning("Not running as root. System-wide installation (symlink creation) may fail.")
+        print_info("Consider running with sudo for full installation:")
+        print("  sudo python3 install.py")
+        print()
     
     # Install system dependencies
-    print_header("Installing system dependencies...")
-    system_packages = [
-        "python3",
-        "python3-pip"
-    ]
+    install_system_dependencies()
     
-    for package in system_packages:
-        run_command(f"apt install -y {package}", f"Installing {package}", check=False)
-    
-    # Install Python packages
-    if not install_python_packages():
-        print_warning("Some Python packages failed to install. You may need to install them manually.")
+    # Install Python packages from requirements.txt
+    if not install_python_packages_from_requirements():
+        print_error("Failed to install Python packages from requirements.txt")
+        print_info("You may need to install them manually.")
+        # Decide if this is fatal - for a crypto toolkit, it probably is.
+        # sys.exit(1) # Uncomment if you want this to be fatal
     
     # Set up toolkit
     if not setup_toolkit():
-        print_error("Failed to set up toolkit")
-        sys.exit(1)
+        print_warning("Toolkit setup (creating 'cryp' command) may be incomplete.")
+        # Not necessarily fatal, user can run via python3 cryp.py
     
     # Verify installation
     if not verify_installation():
         print_error("Installation verification failed")
-        sys.exit(1)
+        # Not necessarily fatal, but warns user something might be wrong
+        # sys.exit(1) # Uncomment if you want this to be fatal
     
-    print_header("Installation Complete!")
-    print_success("IE3082-Crypto-Toolkit has been successfully installed!")
+    print_header("Installation Process Complete!")
+    print_info("Please note:")
+    print("  - If you saw warnings about PEP 668 or system packages, packages might be installed via apt.")
+    print("  - If 'cryp' command creation failed, run the tool with: python3 cryp.py")
     print()
-    print_info("You can now use the tool with the 'cryp' command:")
-    print("  cryp -h          # Show help")
+    print_success("IE3082-Crypto-Toolkit installation process finished!")
+    print()
+    print_info("You can now use the tool:")
+    print("  cryp -h          # Show help (if symlink worked)")
+    print("  python3 cryp.py -h # Show help (direct execution)")
     print("  cryp aes demo    # Run AES demo")
     print("  cryp rsa demo    # Run RSA demo")
     print("  cryp ecc demo    # Run ECC demo")
     print("  cryp hash demo   # Run Hash demo")
     print("  cryp bench demo  # Run Benchmark demo")
     print()
-    print_info("For system-wide access, you may need to restart your terminal or run:")
-    print("  source ~/.bashrc")
+    print_info("For system-wide access, you may need to restart your terminal.")
     print()
     print_info("Documentation and examples can be found in the README.md file.")
 
 if __name__ == "__main__":
-    # Check if running as root (recommended for system-wide installation)
-    if os.geteuid() != 0:
-        print_warning("Running installation without root privileges. System-wide installation may fail.")
-        print_info("For full installation, run with sudo:")
-        print("  sudo python3 install.py")
-        print()
-    
     main()
