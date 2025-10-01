@@ -54,7 +54,7 @@ def print_tool_header():
  ║   ██║███████╗██████╔╝╚██████╔╝╚██████╔╝███████╗     ╚██████╗██║  ██║   ██║   ██║        ██║   ╚██████╔╝   ║
  ║   ╚═╝╚══════╝╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝      ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚═╝        ╚═╝    ╚═════╝    ║
  ║                                                                                                           ║
- ║                         🔐 Advanced Encryption & Security Tools - {self.version}                          ║
+ ║                         🔐 Advanced Encryption & Security Tools - Version 1.0                             ║
  ║                                                                                                           ║
  ║                                IT22249852 -- P.M.T.L. KARUNARATHNA                                        ║
  ║                                                                                                           ║

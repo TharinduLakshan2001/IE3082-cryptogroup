@@ -61,7 +61,6 @@ except ImportError as e:
         """Print the IE3082-Crypto-Toolkit header."""
         header = r"""
 
- 
  ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════╗
  ║                                                                                                           ║
  ║   ██╗███████╗██████╗  ██████╗  ██████╗ ██████╗       ██████╗██████╗ ██╗   ██╗██████╗ ████████╗ ██████╗    ║
@@ -71,7 +70,7 @@ except ImportError as e:
  ║   ██║███████╗██████╔╝╚██████╔╝╚██████╔╝███████╗     ╚██████╗██║  ██║   ██║   ██║        ██║   ╚██████╔╝   ║
  ║   ╚═╝╚══════╝╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝      ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚═╝        ╚═╝    ╚═════╝    ║
  ║                                                                                                           ║
- ║                         🔐 Advanced Encryption & Security Tools - {self.version}                          ║
+ ║                         🔐 Advanced Encryption & Security Tools - Version 1.0                             ║
  ║                                                                                                           ║
  ║                                IT22249852 -- P.M.T.L. KARUNARATHNA                                        ║
  ║                                                                                                           ║
@@ -1359,5 +1358,4 @@ def generate_benchmark_charts(results, results_dir):
         print_warning(f"Chart generation failed: {e}")
 
 if __name__ == "__main__":
-    print_tool_header()
     main()
