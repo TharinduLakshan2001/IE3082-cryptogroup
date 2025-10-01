@@ -4,13 +4,67 @@ Provides benchmarking functions for encryption/decryption and hashing operations
 """
 
 import os
+import sys
 import time
 import csv
 import secrets
-from ..aes.aes_gcm import generate_aes_key, encrypt_file_aes, decrypt_file_aes
-from ..rsa.rsa_crypto import generate_rsa_keys, rsa_encrypt, rsa_decrypt, rsa_sign, rsa_verify
-from ..ecc.ecc_crypto import generate_curve25519_keys, ecc_key_exchange, generate_ed25519_keys, ed25519_sign, ed25519_verify
-from ..hashing.sha256_hash import hash_file_sha256, hash_text_sha256
+
+# Add the parent directory to Python path to fix import issues
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Import modules with absolute paths to avoid relative import issues
+try:
+    from aes.aes_gcm import generate_aes_key, encrypt_file_aes, decrypt_file_aes
+    from rsa.rsa_crypto import generate_rsa_keys, rsa_encrypt, rsa_decrypt, rsa_sign, rsa_verify
+    from ecc.ecc_crypto import generate_curve25519_keys, ecc_key_exchange, generate_ed25519_keys, ed25519_sign, ed25519_verify
+    from hashing.sha256_hash import hash_file_sha256, hash_text_sha256
+except ImportError as e:
+    print(f"Failed to import required modules: {e}")
+    # Try alternative import method
+    try:
+        import importlib.util
+        # Import AES module
+        aes_file = os.path.join(parent_dir, 'aes', 'aes_gcm.py')
+        aes_spec = importlib.util.spec_from_file_location("aes_gcm", aes_file)
+        aes_module = importlib.util.module_from_spec(aes_spec)
+        aes_spec.loader.exec_module(aes_module)
+        generate_aes_key = aes_module.generate_aes_key
+        encrypt_file_aes = aes_module.encrypt_file_aes
+        decrypt_file_aes = aes_module.decrypt_file_aes
+        
+        # Import RSA module
+        rsa_file = os.path.join(parent_dir, 'rsa', 'rsa_crypto.py')
+        rsa_spec = importlib.util.spec_from_file_location("rsa_crypto", rsa_file)
+        rsa_module = importlib.util.module_from_spec(rsa_spec)
+        rsa_spec.loader.exec_module(rsa_module)
+        generate_rsa_keys = rsa_module.generate_rsa_keys
+        rsa_encrypt = rsa_module.rsa_encrypt
+        rsa_decrypt = rsa_module.rsa_decrypt
+        rsa_sign = rsa_module.rsa_sign
+        rsa_verify = rsa_module.rsa_verify
+        
+        # Import ECC module
+        ecc_file = os.path.join(parent_dir, 'ecc', 'ecc_crypto.py')
+        ecc_spec = importlib.util.spec_from_file_location("ecc_crypto", ecc_file)
+        ecc_module = importlib.util.module_from_spec(ecc_spec)
+        ecc_spec.loader.exec_module(ecc_module)
+        generate_curve25519_keys = ecc_module.generate_curve25519_keys
+        ecc_key_exchange = ecc_module.ecc_key_exchange
+        generate_ed25519_keys = ecc_module.generate_ed25519_keys
+        ed25519_sign = ecc_module.ed25519_sign
+        ed25519_verify = ecc_module.ed25519_verify
+        
+        # Import Hashing module
+        hash_file = os.path.join(parent_dir, 'hashing', 'sha256_hash.py')
+        hash_spec = importlib.util.spec_from_file_location("sha256_hash", hash_file)
+        hash_module = importlib.util.module_from_spec(hash_spec)
+        hash_spec.loader.exec_module(hash_module)
+        hash_file_sha256 = hash_module.hash_file_sha256
+        hash_text_sha256 = hash_module.hash_text_sha256
+    except Exception as e2:
+        raise ImportError(f"Failed to import modules with both methods: {e}; {e2}")
 
 # Try to import matplotlib, but handle the case where it's not available
 try:
@@ -270,69 +324,73 @@ def export_results_to_csv(encryption_results, hashing_results, filename_prefix="
         writer.writeheader()
         
         # AES results
-        for result in encryption_results['aes']:
-            writer.writerow({
-                'algorithm': 'AES-256-GCM',
-                'size_kb': result['size_kb'],
-                'operation': 'encrypt',
-                'time': result['encrypt_time']
-            })
-            writer.writerow({
-                'algorithm': 'AES-256-GCM',
-                'size_kb': result['size_kb'],
-                'operation': 'decrypt',
-                'time': result['decrypt_time']
-            })
+        if encryption_results and 'aes' in encryption_results:
+            for result in encryption_results['aes']:
+                writer.writerow({
+                    'algorithm': 'AES-256-GCM',
+                    'size_kb': result['size_kb'],
+                    'operation': 'encrypt',
+                    'time': result['encrypt_time']
+                })
+                writer.writerow({
+                    'algorithm': 'AES-256-GCM',
+                    'size_kb': result['size_kb'],
+                    'operation': 'decrypt',
+                    'time': result['decrypt_time']
+                })
         
         # RSA results
-        for result in encryption_results['rsa']:
-            writer.writerow({
-                'algorithm': 'RSA-3072',
-                'size_kb': result['size_kb'],
-                'operation': 'encrypt',
-                'time': result['encrypt_time']
-            })
-            writer.writerow({
-                'algorithm': 'RSA-3072',
-                'size_kb': result['size_kb'],
-                'operation': 'decrypt',
-                'time': result['decrypt_time']
-            })
-            writer.writerow({
-                'algorithm': 'RSA-3072',
-                'size_kb': result['size_kb'],
-                'operation': 'sign',
-                'time': result['sign_time']
-            })
-            writer.writerow({
-                'algorithm': 'RSA-3072',
-                'size_kb': result['size_kb'],
-                'operation': 'verify',
-                'time': result['verify_time']
-            })
+        if encryption_results and 'rsa' in encryption_results:
+            for result in encryption_results['rsa']:
+                writer.writerow({
+                    'algorithm': 'RSA-3072',
+                    'size_kb': result['size_kb'],
+                    'operation': 'encrypt',
+                    'time': result['encrypt_time']
+                })
+                writer.writerow({
+                    'algorithm': 'RSA-3072',
+                    'size_kb': result['size_kb'],
+                    'operation': 'decrypt',
+                    'time': result['decrypt_time']
+                })
+                writer.writerow({
+                    'algorithm': 'RSA-3072',
+                    'size_kb': result['size_kb'],
+                    'operation': 'sign',
+                    'time': result['sign_time']
+                })
+                writer.writerow({
+                    'algorithm': 'RSA-3072',
+                    'size_kb': result['size_kb'],
+                    'operation': 'verify',
+                    'time': result['verify_time']
+                })
         
         # ECC results
-        for result in encryption_results['ecc_key_exchange']:
-            writer.writerow({
-                'algorithm': 'ECC-X25519',
-                'size_kb': 0,
-                'operation': 'key_exchange',
-                'time': result['time']
-            })
+        if encryption_results and 'ecc_key_exchange' in encryption_results:
+            for result in encryption_results['ecc_key_exchange']:
+                writer.writerow({
+                    'algorithm': 'ECC-X25519',
+                    'size_kb': 0,
+                    'operation': 'key_exchange',
+                    'time': result['time']
+                })
         
-        for result in encryption_results['ecc_signing']:
-            writer.writerow({
-                'algorithm': 'ECC-Ed25519',
-                'size_kb': 0,
-                'operation': 'sign',
-                'time': result['sign_time']
-            })
-            writer.writerow({
-                'algorithm': 'ECC-Ed25519',
-                'size_kb': 0,
-                'operation': 'verify',
-                'time': result['verify_time']
-            })
+        if encryption_results and 'ecc_signing' in encryption_results:
+            for result in encryption_results['ecc_signing']:
+                writer.writerow({
+                    'algorithm': 'ECC-Ed25519',
+                    'size_kb': 0,
+                    'operation': 'sign',
+                    'time': result['sign_time']
+                })
+                writer.writerow({
+                    'algorithm': 'ECC-Ed25519',
+                    'size_kb': 0,
+                    'operation': 'verify',
+                    'time': result['verify_time']
+                })
     
     # Export hashing results
     with open(f"{filename_prefix}_hashing.csv", "w", newline="") as csvfile:
@@ -365,58 +423,92 @@ def plot_benchmark_results(encryption_results, hashing_results, filename_prefix=
         plt.figure(figsize=(12, 8))
         
         # AES encryption/decryption
-        aes_sizes = [r['size_kb'] for r in encryption_results['aes']]
-        aes_encrypt_times = [r['encrypt_time'] for r in encryption_results['aes']]
-        aes_decrypt_times = [r['decrypt_time'] for r in encryption_results['aes']]
-        
-        plt.subplot(2, 2, 1)
-        plt.plot(aes_sizes, aes_encrypt_times, marker='o', label='AES Encrypt')
-        plt.plot(aes_sizes, aes_decrypt_times, marker='s', label='AES Decrypt')
-        plt.xlabel('File Size (KB)')
-        plt.ylabel('Time (seconds)')
-        plt.title('AES-256-GCM Performance')
-        plt.legend()
-        plt.grid(True)
+        if encryption_results and 'aes' in encryption_results and encryption_results['aes']:
+            aes_sizes = [r['size_kb'] for r in encryption_results['aes']]
+            aes_encrypt_times = [r['encrypt_time'] for r in encryption_results['aes']]
+            aes_decrypt_times = [r['decrypt_time'] for r in encryption_results['aes']]
+            
+            plt.subplot(2, 2, 1)
+            plt.plot(aes_sizes, aes_encrypt_times, marker='o', label='AES Encrypt')
+            plt.plot(aes_sizes, aes_decrypt_times, marker='s', label='AES Decrypt')
+            plt.xlabel('File Size (KB)')
+            plt.ylabel('Time (seconds)')
+            plt.title('AES-256-GCM Performance')
+            plt.legend()
+            plt.grid(True)
+        else:
+            plt.subplot(2, 2, 1)
+            plt.text(0.5, 0.5, 'No AES data', horizontalalignment='center', verticalalignment='center')
+            plt.title('AES-256-GCM Performance')
+            plt.axis('off')
         
         # RSA encryption/decryption
-        rsa_sizes = [r['size_kb'] for r in encryption_results['rsa']]
-        rsa_encrypt_times = [r['encrypt_time'] for r in encryption_results['rsa']]
-        rsa_decrypt_times = [r['decrypt_time'] for r in encryption_results['rsa']]
-        
-        plt.subplot(2, 2, 2)
-        plt.plot(rsa_sizes, rsa_encrypt_times, marker='o', label='RSA Encrypt')
-        plt.plot(rsa_sizes, rsa_decrypt_times, marker='s', label='RSA Decrypt')
-        plt.xlabel('Data Size (KB)')
-        plt.ylabel('Time (seconds)')
-        plt.title('RSA-3072 Performance')
-        plt.legend()
-        plt.grid(True)
+        if encryption_results and 'rsa' in encryption_results and encryption_results['rsa']:
+            rsa_sizes = [r['size_kb'] for r in encryption_results['rsa']]
+            rsa_encrypt_times = [r['encrypt_time'] for r in encryption_results['rsa']]
+            rsa_decrypt_times = [r['decrypt_time'] for r in encryption_results['rsa']]
+            
+            plt.subplot(2, 2, 2)
+            plt.plot(rsa_sizes, rsa_encrypt_times, marker='o', label='RSA Encrypt')
+            plt.plot(rsa_sizes, rsa_decrypt_times, marker='s', label='RSA Decrypt')
+            plt.xlabel('Data Size (KB)')
+            plt.ylabel('Time (seconds)')
+            plt.title('RSA-3072 Performance')
+            plt.legend()
+            plt.grid(True)
+        else:
+            plt.subplot(2, 2, 2)
+            plt.text(0.5, 0.5, 'No RSA data', horizontalalignment='center', verticalalignment='center')
+            plt.title('RSA-3072 Performance')
+            plt.axis('off')
         
         # ECC performance
-        ecc_key_exchange_time = encryption_results['ecc_key_exchange'][0]['time']
-        ecc_sign_time = encryption_results['ecc_signing'][0]['sign_time']
-        ecc_verify_time = encryption_results['ecc_signing'][0]['verify_time']
-        
         plt.subplot(2, 2, 3)
-        plt.bar(['Key Exchange', 'Sign', 'Verify'], 
-                [ecc_key_exchange_time, ecc_sign_time, ecc_verify_time])
-        plt.ylabel('Time (seconds)')
-        plt.title('ECC Curve25519 Performance')
-        plt.tick_params(axis='x', rotation=45)
+        ecc_data = []
+        ecc_labels = []
+        
+        if (encryption_results and 'ecc_key_exchange' in encryption_results and 
+            encryption_results['ecc_key_exchange'] and len(encryption_results['ecc_key_exchange']) > 0):
+            ecc_key_exchange_time = encryption_results['ecc_key_exchange'][0]['time']
+            ecc_data.append(ecc_key_exchange_time)
+            ecc_labels.append('Key Exchange')
+        
+        if (encryption_results and 'ecc_signing' in encryption_results and 
+            encryption_results['ecc_signing'] and len(encryption_results['ecc_signing']) > 0):
+            ecc_sign_time = encryption_results['ecc_signing'][0]['sign_time']
+            ecc_verify_time = encryption_results['ecc_signing'][0]['verify_time']
+            ecc_data.extend([ecc_sign_time, ecc_verify_time])
+            ecc_labels.extend(['Sign', 'Verify'])
+        
+        if ecc_data:
+            plt.bar(ecc_labels, ecc_data)
+            plt.ylabel('Time (seconds)')
+            plt.title('ECC Curve25519 Performance')
+            plt.tick_params(axis='x', rotation=45)
+        else:
+            plt.text(0.5, 0.5, 'No ECC data', horizontalalignment='center', verticalalignment='center')
+            plt.title('ECC Curve25519 Performance')
+            plt.axis('off')
         
         # Hashing performance
-        hash_sizes = [r['size_kb'] for r in hashing_results]
-        file_hash_times = [r['file_hash_time'] for r in hashing_results]
-        text_hash_times = [r['text_hash_time'] for r in hashing_results]
-        
-        plt.subplot(2, 2, 4)
-        plt.plot(hash_sizes, file_hash_times, marker='o', label='File Hash')
-        plt.plot(hash_sizes, text_hash_times, marker='s', label='Text Hash')
-        plt.xlabel('Size (KB)')
-        plt.ylabel('Time (seconds)')
-        plt.title('SHA-256 Hashing Performance')
-        plt.legend()
-        plt.grid(True)
+        if hashing_results:
+            hash_sizes = [r['size_kb'] for r in hashing_results]
+            file_hash_times = [r['file_hash_time'] for r in hashing_results]
+            text_hash_times = [r['text_hash_time'] for r in hashing_results]
+            
+            plt.subplot(2, 2, 4)
+            plt.plot(hash_sizes, file_hash_times, marker='o', label='File Hash')
+            plt.plot(hash_sizes, text_hash_times, marker='s', label='Text Hash')
+            plt.xlabel('Size (KB)')
+            plt.ylabel('Time (seconds)')
+            plt.title('SHA-256 Hashing Performance')
+            plt.legend()
+            plt.grid(True)
+        else:
+            plt.subplot(2, 2, 4)
+            plt.text(0.5, 0.5, 'No hashing data', horizontalalignment='center', verticalalignment='center')
+            plt.title('SHA-256 Hashing Performance')
+            plt.axis('off')
         
         plt.tight_layout()
         plt.savefig(f"{filename_prefix}_performance.png", dpi=300, bbox_inches='tight')

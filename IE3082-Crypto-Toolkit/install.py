@@ -44,6 +44,8 @@ def print_info(text):
 def print_tool_header():
     """Print the IE3082-Crypto-Toolkit header."""
     header = r"""
+
+
 ╔════════════════════════════════════════════════════════════════════════════════════════════════════════ ══╗
 ║                                                                                                           ║
 ║   ██╗███████╗██████╗  ██████╗  ██████╗ ██████╗       ██████╗██████╗ ██╗   ██╗██████╗ ████████╗ ██████╗    ║
@@ -58,6 +60,7 @@ def print_tool_header():
 ║                                IT22249852 -- P.M.T.L. KARUNARATHNA                                        ║
 ║                                                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+  
                                                             
     """
     print(f"{Colors.CYAN}{Colors.BOLD}{header}{Colors.RESET}")
@@ -129,7 +132,7 @@ def install_python_packages():
             f"python3 -m pip install {package_name}",
             f"pip3 install {package_name}",
             f"pip install {package_name}",
-            f"apt install -y python3-{package_name}" if package_name != "matplotlib" else "apt install -y python3-matplotlib",
+            f"apt install -y python3-{package_name.replace('_', '-')}" if package_name != "matplotlib" else "apt install -y python3-matplotlib",
         ]
         
         installed = False
@@ -274,6 +277,7 @@ def main():
     print("  cryp rsa demo    # Run RSA demo")
     print("  cryp ecc demo    # Run ECC demo")
     print("  cryp hash demo   # Run Hash demo")
+    print("  cryp bench demo  # Run Benchmark demo")
     print()
     print_info("For system-wide access, you may need to restart your terminal or run:")
     print("  source ~/.bashrc")
