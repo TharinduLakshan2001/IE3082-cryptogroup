@@ -83,6 +83,12 @@ After installation, you can use the toolkit with the `cryp` command:
 cryp -h
 cryp --help
 ```
+### Automate The Whole Process
+
+```bash
+#This command will Use all algorithums to encrypt the file 
+cryp ini en <fileName>
+```
 
 ### AES-256-GCM Operations
 ```bash
@@ -263,4 +269,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built for IE3082 Cryptography and Network Security course
 - Uses the Python cryptography library
+
 - Designed for Kali Linux environment
