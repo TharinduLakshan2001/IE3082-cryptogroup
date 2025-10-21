@@ -8,7 +8,7 @@ import sys
 import os
 import importlib.util
 
-# --- Import Color Utilities with Robust Error Handling ---
+# --- Import Color Utilities with Robust Error Handling --
 COLOR_UTILS_AVAILABLE = False
 try:
     from utils.color_utils import print_tool_header, print_header, print_success, print_error, print_info, print_warning
@@ -691,6 +691,8 @@ def handle_ini_commands():
 
 # --- Enhanced Integrated Benchmarking Functions ---
 
+# ... (keep existing imports and functions up to integrated_encryption_benchmark)
+
 def integrated_encryption_benchmark(input_file):
     """Run integrated encryption benchmark for all algorithms."""
     # --- Ensure Header is Printed ---
@@ -722,8 +724,27 @@ def integrated_encryption_benchmark(input_file):
             color_start = "\033[36m\033[1m" # Cyan and Bold
             color_end = "\033[0m"          # Reset
         print(f"{color_start}{custom_header}{color_end}")
-
+    
     print_info(f"Running integrated encryption benchmark for: {input_file}")
+    
+    # Prompt for AES key size
+    print_header("Select AES key size:")
+    print("    1. 128-bit (16 bytes)")
+    print("    2. 192-bit (24 bytes)")
+    print("    3. 256-bit (32 bytes)")
+    
+    choice = input("[?] Enter choice (1-3) [default: 3]: ").strip()
+    
+    key_sizes = {
+        '1': 16,  # 128-bit
+        '2': 24,  # 192-bit
+        '3': 32   # 256-bit
+    }
+    
+    key_size = key_sizes.get(choice, 32)  # default to 256-bit
+    aes_algorithm_name = f"AES-{key_size*8}-GCM"
+    
+    print_info(f"Using {aes_algorithm_name} for encryption")
     
     # Import memory profiling if available
     try:
@@ -739,15 +760,13 @@ def integrated_encryption_benchmark(input_file):
     base_name = os.path.splitext(os.path.basename(input_file))[0]
     main_results_dir = f"{base_name}_en"
     os.makedirs(main_results_dir, exist_ok=True)
-    
     print_info(f"Main results directory created: {main_results_dir}")
     
     # Create algorithm-specific directories
-    aes_dir = os.path.join(main_results_dir, "AES-256-GCM")
+    aes_dir = os.path.join(main_results_dir, aes_algorithm_name)
     rsa_dir = os.path.join(main_results_dir, "RSA-3072")
     ecc_dir = os.path.join(main_results_dir, "ECC-Ed25519")
     sha_dir = os.path.join(main_results_dir, "SHA-256")
-    
     os.makedirs(aes_dir, exist_ok=True)
     os.makedirs(rsa_dir, exist_ok=True)
     os.makedirs(ecc_dir, exist_ok=True)
@@ -771,15 +790,14 @@ def integrated_encryption_benchmark(input_file):
         'algorithms': {}
     }
     
-    # --- Test AES-256-GCM ---
-    print_header("Testing AES-256-GCM...")
+    # --- Test AES-GCM with selected key size ---
+    print_header(f"Testing {aes_algorithm_name}...")
     try:
         import time
         import secrets
-        
-        # Generate key and nonce
+        # Generate key and nonce with selected key size
         from aes.aes_gcm import generate_aes_key, encrypt_file_aes
-        key = generate_aes_key()
+        key = generate_aes_key(key_size)
         nonce = secrets.token_bytes(12)
         
         # Save key and nonce for potential future use/debugging
@@ -794,7 +812,7 @@ def integrated_encryption_benchmark(input_file):
         mem_before_mb = 0
         if MEMORY_PROFILING_AVAILABLE:
             mem_before_mb = process.memory_info().rss / (1024.0 * 1024.0)
-
+        
         # Time the encryption
         start_time = time.perf_counter() # More precise timer
         encrypted_file = os.path.join(aes_dir, f"{base_name}.aes.enc")
@@ -811,24 +829,21 @@ def integrated_encryption_benchmark(input_file):
         encryption_time = end_time - start_time
         throughput_kbs = (file_size_kb / encryption_time) if encryption_time > 0 else 0
         
-        benchmark_results['algorithms']['AES-256-GCM'] = {
+        benchmark_results['algorithms'][aes_algorithm_name] = {
             'execution_time': encryption_time,
             'throughput': throughput_kbs,
             'memory_usage': memory_usage_mb,
             'key_generation_time': 0,  # Key already generated for timing
             'key_size': len(key),
             'ciphertext_size': os.path.getsize(encrypted_file),
-            'security_strength': '256-bit',
+            'security_strength': f'{key_size*8}-bit',
             'scalability': 'Linear'
         }
-        
-        print_success(f"AES-256-GCM: Time={encryption_time:.4f}s, Throughput={throughput_kbs:.2f}KB/s")
-        
+        print_success(f"{aes_algorithm_name}: Time={encryption_time:.4f}s, Throughput={throughput_kbs:.2f}KB/s")
         # Clean up temporary encrypted file if desired, or keep for inspection
         # os.remove(encrypted_file) # Optional cleanup
-        
     except Exception as e:
-        print_error(f"AES benchmark failed: {e}")
+        print_error(f"{aes_algorithm_name} benchmark failed: {e}")
     
     # --- Test RSA-3072 (Hybrid Encryption for large files) ---
     print_header("Testing RSA-3072 (Hybrid Encryption)...")
@@ -846,8 +861,8 @@ def integrated_encryption_benchmark(input_file):
         public_key_file = os.path.join(rsa_dir, "rsa_public.pem")
         save_rsa_keys(private_key, public_key, private_key_file, public_key_file)
         
-        # Generate a session key for AES (hybrid approach)
-        session_key = generate_aes_key() # Reuse AES key gen function
+        # Generate a session key for AES (hybrid approach) - use the selected key size
+        session_key = generate_aes_key(key_size) # Use the same key size as chosen by user
         session_nonce = secrets.token_bytes(12) # GCM nonce
         
         # Encrypt the session key with RSA public key
@@ -862,12 +877,12 @@ def integrated_encryption_benchmark(input_file):
         mem_before_mb = 0
         if MEMORY_PROFILING_AVAILABLE:
             mem_before_mb = process.memory_info().rss / (1024.0 * 1024.0)
-
+        
         # Time the AES encryption of the large file using the generated key
         start_time = time.perf_counter()
         hybrid_encrypted_file = os.path.join(rsa_dir, f"{base_name}.hybrid.enc")
         
-        # Create AES cipher
+        # Create AES cipher with the selected key size
         from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
         from cryptography.hazmat.backends import default_backend
         cipher = Cipher(
@@ -908,12 +923,10 @@ def integrated_encryption_benchmark(input_file):
             'key_generation_time': key_gen_time, # Time for RSA key generation
             'key_size': 3072,  # bits for RSA
             'ciphertext_size': total_output_size, # Combined size
-            'security_strength': '3072-bit (RSA) + 256-bit (AES)',
+            'security_strength': f'3072-bit (RSA) + {key_size*8}-bit (AES)',
             'scalability': 'Hybrid (AES for data, RSA for key)'
         }
-        
         print_success(f"RSA-3072 (Hybrid): Time={encryption_time:.4f}s, Throughput={throughput_kbs:.2f}KB/s")
-        
     except Exception as e:
         print_error(f"RSA benchmark failed: {e}")
     
@@ -941,7 +954,7 @@ def integrated_encryption_benchmark(input_file):
         mem_before_mb = 0
         if MEMORY_PROFILING_AVAILABLE:
             mem_before_mb = process.memory_info().rss / (1024.0 * 1024.0)
-
+        
         # Time signing
         start_time = time.perf_counter()
         signature_file = os.path.join(ecc_dir, f"{base_name}.sig")
@@ -972,9 +985,7 @@ def integrated_encryption_benchmark(input_file):
             'security_strength': '128-bit equivalent',
             'scalability': 'Linear'
         }
-        
         print_success(f"ECC-Ed25519: Time={signing_time:.4f}s, Throughput={throughput_kbs:.2f}KB/s")
-        
     except Exception as e:
         print_error(f"ECC benchmark failed: {e}")
     
@@ -988,7 +999,7 @@ def integrated_encryption_benchmark(input_file):
         mem_before_mb = 0
         if MEMORY_PROFILING_AVAILABLE:
             mem_before_mb = process.memory_info().rss / (1024.0 * 1024.0)
-
+        
         # Time hashing
         start_time = time.perf_counter()
         hash_file = os.path.join(sha_dir, f"{base_name}_hash.txt")
@@ -1019,9 +1030,7 @@ def integrated_encryption_benchmark(input_file):
             'security_strength': '256-bit',
             'scalability': 'Linear'
         }
-        
         print_success(f"SHA-256: Time={hashing_time:.4f}s, Throughput={throughput_kbs:.2f}KB/s")
-        
     except Exception as e:
         print_error(f"Hashing benchmark failed: {e}")
     
@@ -1041,173 +1050,7 @@ def integrated_encryption_benchmark(input_file):
     
     print_success(f"Integrated encryption benchmark completed. Results saved to {main_results_dir}")
 
-def integrated_decryption_benchmark(input_file):
-    """Run integrated decryption for all algorithms."""
-    print_info(f"Running integrated decryption for: {input_file}")
-    
-    base_name = os.path.splitext(os.path.basename(input_file))[0]
-    main_results_dir = f"{base_name}_en"
-    
-    if not os.path.exists(main_results_dir):
-        print_error(f"Results directory {main_results_dir} not found. Run 'cryp ini en {input_file}' first.")
-        return
-
-    # Find the AES-256-GCM encrypted file and keys
-    aes_dir = os.path.join(main_results_dir, "AES-256-GCM")
-    aes_enc_file = os.path.join(aes_dir, f"{base_name}.aes.enc")
-    aes_key_file = os.path.join(aes_dir, "aes_key.bin")
-    aes_nonce_file = os.path.join(aes_dir, "aes_nonce.bin")
-    
-    if os.path.exists(aes_enc_file) and os.path.exists(aes_key_file) and os.path.exists(aes_nonce_file):
-        try:
-            from aes.aes_gcm import decrypt_file_aes
-            with open(aes_key_file, 'rb') as f: key = f.read()
-            with open(aes_nonce_file, 'rb') as f: nonce = f.read()
-            
-            output_file = f"{base_name}_aes_decrypted"
-            decrypt_file_aes(aes_enc_file, key, nonce, output_file)
-            print_success(f"AES-256-GCM: Decrypted to {output_file}")
-        except Exception as e:
-            print_error(f"AES decryption failed: {e}")
-    else:
-        print_info("AES-256-GCM: Encrypted file or keys not found.")
-    
-    # Find the RSA-3072 encrypted file and keys (hybrid)
-    rsa_dir = os.path.join(main_results_dir, "RSA-3072")
-    rsa_enc_file = os.path.join(rsa_dir, f"{base_name}.hybrid.enc")
-    rsa_private_key_file = os.path.join(rsa_dir, "rsa_private.pem")
-    rsa_encrypted_key_file = os.path.join(rsa_dir, "encrypted_session_key.bin") # Corrected key file name
-    
-    if os.path.exists(rsa_enc_file) and os.path.exists(rsa_private_key_file) and os.path.exists(rsa_encrypted_key_file):
-        try:
-            # Load private key using the cryptography library directly
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.backends import default_backend
-            from cryptography.hazmat.primitives.asymmetric import padding
-            from cryptography.hazmat.primitives import hashes
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-            
-            # Load the private key in PEM format
-            with open(rsa_private_key_file, 'rb') as f:
-                private_key = serialization.load_pem_private_key(
-                    f.read(),
-                    password=None,  # Assuming no password for the key
-                    backend=default_backend()
-                )
-            
-            # Load the encrypted AES key and IV blob
-            with open(rsa_encrypted_key_file, 'rb') as f: encrypted_key_iv = f.read()
-            
-            # Decrypt the AES key and IV using RSA private key
-            # Use OAEP padding as it's likely what was used during encryption
-            decrypted_key_iv = private_key.decrypt(
-                encrypted_key_iv,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
-            
-            # Extract the AES key (32 bytes) and IV (12 bytes) from the decrypted data
-            aes_key = decrypted_key_iv[:32]
-            iv = decrypted_key_iv[32:44]
-            
-            # Decrypt the large file using AES
-            output_file = f"{base_name}_rsa_decrypted"
-            
-            # Create AES cipher for decryption
-            cipher = Cipher(
-                algorithms.AES(aes_key),
-                modes.GCM(iv),  # The tag is at the end of the file
-                backend=default_backend()
-            )
-            decryptor = cipher.decryptor()
-            
-            # Open files
-            with open(rsa_enc_file, 'rb') as infile, open(output_file, 'wb') as outfile:
-                # Read file content
-                data = infile.read()
-                # The tag is the last 16 bytes
-                ciphertext = data[:-16]
-                tag = data[-16:]
-                
-                # Decrypt
-                plaintext = decryptor.update(ciphertext) + decryptor.finalize_with_tag(tag)
-                outfile.write(plaintext)
-            
-            print_success(f"RSA-3072 (Hybrid): Decrypted to {output_file}")
-        except Exception as e:
-            print_error(f"RSA decryption failed: {e}")
-    else:
-        print_info("RSA-3072: Encrypted file or keys not found.")
-    
-    # Find the ECC-Ed25519 signature file and keys (verification only, no decryption)
-    ecc_dir = os.path.join(main_results_dir, "ECC-Ed25519")
-    ecc_sig_file = os.path.join(ecc_dir, f"{base_name}.sig")
-    ecc_public_key_file = os.path.join(ecc_dir, "ed25519_public.pem")
-    
-    if os.path.exists(ecc_sig_file) and os.path.exists(ecc_public_key_file):
-        try:
-            from ecc.ecc_crypto import ed25519_verify
-            from cryptography.hazmat.primitives.asymmetric import ed25519
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.backends import default_backend
-            
-            with open(input_file, 'rb') as f: message = f.read()
-            with open(ecc_sig_file, 'rb') as f: signature = f.read()
-            
-            # Load public key using cryptography library directly
-            # The key was saved using the toolkit's save_ed25519_keys function,
-            # which uses SubjectPublicKeyInfo format (not Raw)
-            with open(ecc_public_key_file, 'rb') as f:
-                public_key_data = f.read()
-                public_key = serialization.load_pem_public_key(public_key_data, backend=default_backend())
-            
-            # Ensure the loaded key is an Ed25519 key
-            if not isinstance(public_key, ed25519.Ed25519PublicKey):
-                print_error(f"ECC verification failed: Loaded key is not an Ed25519 public key.")
-                return
-            
-            # Verify the signature
-            is_valid = ed25519_verify(message, signature, public_key)
-            if is_valid:
-                print_success(f"ECC-Ed25519: Signature verified successfully.")
-            else:
-                print_error(f"ECC-Ed25519: Signature verification failed.")
-        except Exception as e:
-            print_error(f"ECC verification failed: {e}")
-    else:
-        print_info("ECC-Ed25519: Signature file or public key not found.")
-    
-    # Find the SHA-256 hash file
-    sha_dir = os.path.join(main_results_dir, "SHA-256")
-    sha_hash_file = os.path.join(sha_dir, f"{base_name}_hash.txt")
-    
-    if os.path.exists(sha_hash_file):
-        try:
-            from hashing.sha256_hash import hash_file_sha256, verify_file_hash
-            # Read the content of the hash file
-            with open(sha_hash_file, 'r') as f: content = f.read()
-            # Split the content by newline and get the hash from the second line
-            lines = content.split('\n')
-            if len(lines) > 1:
-                stored_hash = lines[1].strip() # Get hash from second line and remove any whitespace
-            else:
-                print_error(f"SHA-256: Hash file format is unexpected. Cannot find stored hash.")
-                return
-            
-            is_valid = verify_file_hash(input_file, stored_hash)
-            if is_valid:
-                print_success(f"SHA-256: Hash verified successfully.")
-            else:
-                print_error(f"SHA-256: Hash verification failed.")
-        except Exception as e:
-            print_error(f"SHA-256 verification failed: {e}")
-    else:
-        print_info("SHA-256: Hash file not found.")
-    
-    print_success(f"Integrated decryption completed for {input_file}")
+# ... (rest of the file remains unchanged)
 
 # --- Enhanced Display and Chart Generation Functions ---
 

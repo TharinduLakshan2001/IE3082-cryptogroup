@@ -1,6 +1,6 @@
 """
-AES-256-GCM Symmetric Encryption Module for IE3082-Crypto-Toolkit
-Provides file encryption/decryption with AES-256-GCM and key generation.
+AES-GCM Symmetric Encryption Module for IE3082-Crypto-Toolkit
+Provides file encryption/decryption with AES-GCM and key generation with configurable key sizes.
 """
 
 import os
@@ -9,17 +9,27 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 
-def generate_aes_key():
-    """Generate a 256-bit (32 bytes) AES key."""
-    return secrets.token_bytes(32)
+def generate_aes_key(key_size=32):
+    """
+    Generate an AES key of specified size.
+    
+    Args:
+        key_size (int): Size of the key in bytes (16=128-bit, 24=192-bit, 32=256-bit)
+        
+    Returns:
+        bytes: AES key of specified size
+    """
+    if key_size not in [16, 24, 32]:
+        raise ValueError("Key size must be 16, 24, or 32 bytes (128, 192, or 256 bits)")
+    return secrets.token_bytes(key_size)
 
 def encrypt_file_aes(input_file, key, nonce, output_file):
     """
-    Encrypt a file using AES-256-GCM.
+    Encrypt a file using AES-GCM.
     
     Args:
         input_file (str): Path to the input file to encrypt
-        key (bytes): 32-byte AES key
+        key (bytes): AES key (16, 24, or 32 bytes)
         nonce (bytes): 12-byte nonce for GCM
         output_file (str): Path to the output encrypted file
     
@@ -27,8 +37,8 @@ def encrypt_file_aes(input_file, key, nonce, output_file):
         bytes: Authentication tag (16 bytes)
     """
     # Validate inputs
-    if len(key) != 32:
-        raise ValueError("Key must be 32 bytes for AES-256")
+    if len(key) not in [16, 24, 32]:
+        raise ValueError("Key must be 16, 24, or 32 bytes (128, 192, or 256 bits)")
     if len(nonce) != 12:
         raise ValueError("Nonce must be 12 bytes for GCM mode")
     
@@ -57,11 +67,11 @@ def encrypt_file_aes(input_file, key, nonce, output_file):
 
 def decrypt_file_aes(input_file, key, nonce, output_file):
     """
-    Decrypt a file using AES-256-GCM and verify integrity.
+    Decrypt a file using AES-GCM and verify integrity.
     
     Args:
         input_file (str): Path to the input encrypted file
-        key (bytes): 32-byte AES key
+        key (bytes): AES key (16, 24, or 32 bytes)
         nonce (bytes): 12-byte nonce for GCM
         output_file (str): Path to the output decrypted file
     
@@ -69,8 +79,8 @@ def decrypt_file_aes(input_file, key, nonce, output_file):
         bool: True if decryption and verification succeeded
     """
     # Validate inputs
-    if len(key) != 32:
-        raise ValueError("Key must be 32 bytes for AES-256")
+    if len(key) not in [16, 24, 32]:
+        raise ValueError("Key must be 16, 24, or 32 bytes (128, 192, or 256 bits)")
     if len(nonce) != 12:
         raise ValueError("Nonce must be 12 bytes for GCM mode")
     
@@ -106,8 +116,8 @@ def aes_demo():
     """Demonstrate AES encryption and decryption with sample data."""
     print("[+] AES-256-GCM Demo Starting...")
     
-    # Generate a key and nonce
-    key = generate_aes_key()
+    # Generate a 256-bit key and nonce
+    key = generate_aes_key(32)  # 256-bit
     nonce = secrets.token_bytes(12)
     
     # Create a sample file
