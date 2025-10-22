@@ -288,9 +288,11 @@ cryp bench demo
 ## 📄 License
 - This project is licensed under the MIT License - see the LICENSE file for details.
 
-🙏 Acknowledgments
+## 🙏 Acknowledgments
 Built for IE3082 Cryptography and Network Security course
 Uses the Python cryptography library
 Designed for Kali Linux environment
-Author: P.M.T.L. Karunarathna (IT22249852)
+
+## 😘 Author: P.M.T.L. Karunarathna (IT22249852)
+
 
