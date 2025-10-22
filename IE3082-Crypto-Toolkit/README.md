@@ -41,6 +41,7 @@ IE3082-Crypto-Toolkit is a comprehensive cryptographic tool suite designed for K
 
 ## 📁 Project Structure
 
+```bash
 IE3082-Crypto-Toolkit/
 ├── aes/
 │ └── aes_gcm.py # AES-GCM implementation
@@ -58,6 +59,7 @@ IE3082-Crypto-Toolkit/
 ├── install.py # Installation script
 ├── requirements.txt # Python dependencies
 └── README.md # This file
+```
 
 
 ## 🛠️ Installation
@@ -257,36 +259,38 @@ cryp bench hashing
 cryp bench demo
 ```
 
-🎨 Colorful Output
-The toolkit features colorful, user-friendly output for better experience:
+## 🎨 Colorful Output
+### The toolkit features colorful, user-friendly output for better experience:
+- Cyan headers for clear section identification
+- Green success messages
+- Red error messages
+- Yellow warnings
+- Blue informational messages
 
-Cyan headers for clear section identification
-Green success messages
-Red error messages
-Yellow warnings
-Blue informational messages
-🧰 Requirements
-Python 3.6+
-cryptography library
-matplotlib (for benchmarking graphs)
-psutil (for memory profiling in benchmarks)
-These are automatically installed by the installation script.
+## 🧰 Requirements
+- Python 3.6+
+- cryptography library
+- matplotlib (for benchmarking graphs)
+- psutil (for memory profiling in benchmarks)
+- These are automatically installed by the installation script.
 
-🔒 Security Notes
-Keys are generated using cryptographically secure random number generators
-AES-GCM provides authenticated encryption
-RSA-3072 with OAEP provides strong asymmetric encryption
-ECC Curve25519 provides efficient key exchange; Ed25519 provides secure signatures
-SHA-256 is a secure hashing algorithm
-The ini en ones command uses AES-GCM for file encryption.
-🤝 Contributing
-Contributions are welcome! Please feel free to submit pull requests or open issues.
+## 🔒 Security Notes
+### Keys are generated using cryptographically secure random number generators
+- AES-GCM provides authenticated encryption
+- RSA-3072 with OAEP provides strong asymmetric encryption
+- ECC Curve25519 provides efficient key exchange; Ed25519 provides secure signatures
+- SHA-256 is a secure hashing algorithm
+- The ini en ones command uses AES-GCM for file encryption.
+  
+## 🤝 Contributing
+- Contributions are welcome! Please feel free to submit pull requests or open issues.
 
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📄 License
+- This project is licensed under the MIT License - see the LICENSE file for details.
 
 🙏 Acknowledgments
 Built for IE3082 Cryptography and Network Security course
 Uses the Python cryptography library
 Designed for Kali Linux environment
 Author: P.M.T.L. Karunarathna (IT22249852)
+
